@@ -79,8 +79,8 @@ Suggested starting resistor values for a 3.3 V ESP32:
 | Channel | Suggested resistor |
 |---|---:|
 | Red | 330 Ω |
-| Green | 470 Ω |
-| Blue | 220–330 Ω |
+| Green | 330 Ω |
+| Blue | 220 Ω |
 
 These are practical starting values, not mandatory values. The best values depend on the LED forward voltage, efficiency and desired brightness.
 
