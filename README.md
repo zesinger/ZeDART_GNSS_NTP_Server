@@ -152,14 +152,14 @@ NEO-M8N PPS  ─────────────►│ GPIO4              �
                            │      Router mode    │
                            │                    │
                            │ GPIO6  ──330Ω──► R  │ GNSS / TIME RGB
-                           │ GPIO7  ──470Ω──► G  │
-                           │ GPIO15 ──220/330Ω►B │
+                           │ GPIO7  ──330Ω──► G  │
+                           │ GPIO15 ──220Ω►B │
                            │              ▲     │
                            │             3V3 ───┤ common anode
                            │                    │
                            │ GPIO9  ──330Ω──► R  │ NETWORK RGB
-                           │ GPIO10 ──470Ω──► G  │
-                           │ GPIO11 ──220/330Ω►B │
+                           │ GPIO10 ──330Ω──► G  │
+                           │ GPIO11 ──220Ω►B │
                            │              ▲     │
                            │             3V3 ───┤ common anode
                            │                    │
