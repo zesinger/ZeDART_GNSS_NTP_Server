@@ -16,6 +16,16 @@ constexpr int GNSS_TX = 17;
 constexpr int PPS_PIN = 4;
 constexpr int WIFI_MODE_PIN = 5;
 
+constexpr int TIME_LED_R = 6;
+constexpr int TIME_LED_G = 7;
+constexpr int TIME_LED_B = 15;
+
+constexpr int NETWORK_LED_R = 9;
+constexpr int NETWORK_LED_G = 10;
+constexpr int NETWORK_LED_B = 11;
+
+constexpr bool RGB_COMMON_ANODE = true;
+
 // -----------------------------------------------------------------------------
 // Wi-Fi configuration
 // -----------------------------------------------------------------------------
@@ -68,6 +78,193 @@ uint8_t validPpsCount = 0;
 
 bool havePreviousPps = false;
 bool clockValid = false;
+bool routerMode = false;
+bool ppsHasLockedOnce = false;
+
+uint32_t lastGnssDataMillis = 0;
+
+constexpr uint32_t GNSS_DATA_TIMEOUT_MS = 2000;
+
+// Forward declarations used by the LED status logic.
+bool isPpsLocked();
+bool isGnssTimeFresh();
+bool isNtpReady();
+
+// -----------------------------------------------------------------------------
+// Status LEDs
+// -----------------------------------------------------------------------------
+
+enum class LedColor
+{
+    Off,
+    Red,
+    Orange,
+    Green,
+    Blue,
+    Purple
+};
+
+void writeLedLevel(
+    int pin,
+    uint8_t brightness)
+{
+    const uint8_t output =
+        RGB_COMMON_ANODE
+            ? 255 - brightness
+            : brightness;
+
+    analogWrite(pin, output);
+}
+
+void setRgb(
+    int redPin,
+    int greenPin,
+    int bluePin,
+    LedColor color)
+{
+    uint8_t red = 0;
+    uint8_t green = 0;
+    uint8_t blue = 0;
+
+    switch (color)
+    {
+        case LedColor::Red:
+            red = 255;
+            break;
+
+        case LedColor::Orange:
+            red = 255;
+            green = 25;
+            break;
+
+        case LedColor::Green:
+            green = 255;
+            break;
+
+        case LedColor::Blue:
+            blue = 255;
+            break;
+
+        case LedColor::Purple:
+            red = 255;
+            blue = 255;
+            break;
+
+        case LedColor::Off:
+        default:
+            break;
+    }
+
+    writeLedLevel(redPin, red);
+    writeLedLevel(greenPin, green);
+    writeLedLevel(bluePin, blue);
+}
+
+void initializeStatusLeds()
+{
+    pinMode(TIME_LED_R, OUTPUT);
+    pinMode(TIME_LED_G, OUTPUT);
+    pinMode(TIME_LED_B, OUTPUT);
+
+    pinMode(NETWORK_LED_R, OUTPUT);
+    pinMode(NETWORK_LED_G, OUTPUT);
+    pinMode(NETWORK_LED_B, OUTPUT);
+
+    setRgb(
+        TIME_LED_R,
+        TIME_LED_G,
+        TIME_LED_B,
+        LedColor::Red);
+
+    setRgb(
+        NETWORK_LED_R,
+        NETWORK_LED_G,
+        NETWORK_LED_B,
+        LedColor::Blue);
+}
+
+bool isGnssDataPresent()
+{
+    return lastGnssDataMillis != 0 &&
+           millis() - lastGnssDataMillis < GNSS_DATA_TIMEOUT_MS;
+}
+
+void updateStatusLeds()
+{
+    if (isNtpReady())
+    {
+        ppsHasLockedOnce = true;
+
+        setRgb(
+            TIME_LED_R,
+            TIME_LED_G,
+            TIME_LED_B,
+            LedColor::Green);
+    }
+    else if (ppsHasLockedOnce &&
+             clockValid &&
+             isGnssTimeFresh() &&
+             !isPpsLocked())
+    {
+        // The clock was previously synchronized, but the PPS reference was lost.
+        setRgb(
+            TIME_LED_R,
+            TIME_LED_G,
+            TIME_LED_B,
+            LedColor::Purple);
+    }
+    else if (isGnssTimeFresh())
+    {
+        // GNSS time is valid, but PPS is not locked yet.
+        setRgb(
+            TIME_LED_R,
+            TIME_LED_G,
+            TIME_LED_B,
+            LedColor::Orange);
+    }
+    else if (isGnssDataPresent() &&
+             gps.satellites.isValid() &&
+             gps.satellites.value() > 0)
+    {
+        // GNSS data is received and satellites are detected, but time is not valid yet.
+        setRgb(
+            TIME_LED_R,
+            TIME_LED_G,
+            TIME_LED_B,
+            LedColor::Blue);
+    }
+    else
+    {
+        // No usable satellite reception.
+        setRgb(
+            TIME_LED_R,
+            TIME_LED_G,
+            TIME_LED_B,
+            LedColor::Red);
+    }
+
+    bool networkReady = false;
+    bool networkWaiting = false;
+
+    if (routerMode)
+    {
+        networkReady = WiFi.status() == WL_CONNECTED;
+        networkWaiting = !networkReady;
+    }
+    else
+    {
+        networkReady = WiFi.softAPgetStationNum() > 0;
+        networkWaiting = WiFi.getMode() == WIFI_AP;
+    }
+
+    setRgb(
+        NETWORK_LED_R,
+        NETWORK_LED_G,
+        NETWORK_LED_B,
+        networkReady
+            ? LedColor::Green
+            : (networkWaiting ? LedColor::Blue : LedColor::Red));
+}
 
 // -----------------------------------------------------------------------------
 // PPS interrupt
@@ -489,6 +686,22 @@ void printStatus()
         ? "YES"
         : "NO");
 
+    Serial.print("NETWORK     : ");
+
+    if (routerMode)
+    {
+        Serial.println(
+            WiFi.status() == WL_CONNECTED
+            ? "ROUTER CONNECTED"
+            : "ROUTER DISCONNECTED");
+    }
+    else
+    {
+        Serial.print("AP - ");
+        Serial.print(WiFi.softAPgetStationNum());
+        Serial.println(" CLIENT(S)");
+    }
+
     if (isNtpReady())
     {
         uint32_t seconds;
@@ -530,7 +743,9 @@ void setup()
         WIFI_MODE_PIN,
         INPUT_PULLUP);
 
-    const bool routerMode =
+    initializeStatusLeds();
+
+    routerMode =
         digitalRead(WIFI_MODE_PIN) == LOW;
 
     if (routerMode)
@@ -551,6 +766,7 @@ void loop()
     while (GNSS.available())
     {
         const char c = GNSS.read();
+        lastGnssDataMillis = millis();
 
         if (gps.encode(c) &&
             gps.time.isUpdated())
@@ -560,6 +776,7 @@ void loop()
     }
 
     processNtp();
+    updateStatusLeds();
 
     static uint32_t lastStatus = 0;
 
