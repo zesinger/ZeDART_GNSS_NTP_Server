@@ -34,8 +34,8 @@ constexpr char AP_SSID[] = "ZeDART-Time";
 constexpr char AP_PASSWORD[] = "ZeDART2026";
 
 // Used only when GPIO5 is connected to GND at startup.
-constexpr char ROUTER_SSID[] = "MYSSID";
-constexpr char ROUTER_PASSWORD[] = "MYPASSWORD";
+constexpr char ROUTER_SSID[] = "MySSID";
+constexpr char ROUTER_PASSWORD[] = "MyPassword";
 
 constexpr char HOSTNAME[] = "zedart-time";
 constexpr uint32_t ROUTER_CONNECT_TIMEOUT_MS = 20000;
@@ -80,10 +80,13 @@ bool havePreviousPps = false;
 bool clockValid = false;
 bool routerMode = false;
 bool ppsHasLockedOnce = false;
+bool ntpActivityActive = false;
 
 uint32_t lastGnssDataMillis = 0;
+uint32_t lastNtpResponseMillis = 0;
 
 constexpr uint32_t GNSS_DATA_TIMEOUT_MS = 2000;
+constexpr uint32_t NTP_ACTIVITY_FLASH_MS = 200;
 
 // Forward declarations used by the LED status logic.
 bool isPpsLocked();
@@ -101,7 +104,8 @@ enum class LedColor
     Orange,
     Green,
     Blue,
-    Purple
+    Purple,
+    White
 };
 
 void writeLedLevel(
@@ -147,6 +151,12 @@ void setRgb(
 
         case LedColor::Purple:
             red = 255;
+            blue = 255;
+            break;
+
+        case LedColor::White:
+            red = 255;
+            green = 255;
             blue = 255;
             break;
 
@@ -242,6 +252,20 @@ void updateStatusLeds()
             TIME_LED_B,
             LedColor::Red);
     }
+
+    if (ntpActivityActive &&
+        millis() - lastNtpResponseMillis < NTP_ACTIVITY_FLASH_MS)
+    {
+        setRgb(
+            NETWORK_LED_R,
+            NETWORK_LED_G,
+            NETWORK_LED_B,
+            LedColor::White);
+
+        return;
+    }
+
+    ntpActivityActive = false;
 
     bool networkReady = false;
     bool networkWaiting = false;
@@ -556,10 +580,17 @@ void processNtp()
 
     ntpUdp.beginPacket(remoteIp, remotePort);
     ntpUdp.write(ntpPacket, NTP_PACKET_SIZE);
-    ntpUdp.endPacket();
 
-    Serial.print("NTP -> ");
-    Serial.println(remoteIp);
+    const int sent = ntpUdp.endPacket();
+
+    if (sent)
+    {
+        lastNtpResponseMillis = millis();
+        ntpActivityActive = true;
+
+        Serial.print("NTP -> ");
+        Serial.println(remoteIp);
+    }
 }
 
 // -----------------------------------------------------------------------------
@@ -569,6 +600,7 @@ void processNtp()
 void startAccessPoint()
 {
     WiFi.mode(WIFI_AP);
+    WiFi.setSleep(false);
 
     WiFi.softAP(
         AP_SSID,
@@ -585,6 +617,7 @@ void startAccessPoint()
 void startRouterMode()
 {
     WiFi.mode(WIFI_STA);
+    WiFi.setSleep(false);
     WiFi.setHostname(HOSTNAME);
 
     Serial.println();
