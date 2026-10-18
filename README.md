@@ -136,35 +136,7 @@ Each color channel must use its **own series resistor**.
 
 For the tested **common-anode RGB LEDs**:
 
-```text
-                                  ESP32-S3
-                           ┌────────────────────┐
-                           │                    │
-NEO-M8N VCC  ─────────────►│ 3V3                │
-NEO-M8N GND  ─────────────►│ GND                │
-NEO-M8N TXD  ─────────────►│ GPIO18  (GNSS RX)  │
-NEO-M8N RXD  ◄─────────────│ GPIO17  (GNSS TX)  │
-NEO-M8N PPS  ─────────────►│ GPIO4              │
-                           │                    │
-                           │ GPIO5 ──────┐       │
-                           │             │       │
-                           │            GND      │
-                           │      Router mode    │
-                           │                    │
-                           │ GPIO6  ──330Ω──► R  │ GNSS / TIME RGB
-                           │ GPIO7  ──330Ω──► G  │
-                           │ GPIO15 ──220Ω►B │
-                           │              ▲     │
-                           │             3V3 ───┤ common anode
-                           │                    │
-                           │ GPIO9  ──330Ω──► R  │ NETWORK RGB
-                           │ GPIO10 ──330Ω──► G  │
-                           │ GPIO11 ──220Ω►B │
-                           │              ▲     │
-                           │             3V3 ───┤ common anode
-                           │                    │
-                           └────────────────────┘
-```
+![Wiring the hardware](doc/schema.png)
 
 GPIO5 left open selects **Access Point mode**.
 
