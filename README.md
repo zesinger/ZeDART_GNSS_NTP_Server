@@ -590,6 +590,29 @@ Current prototype features:
 
 ---
 
+## Practical timing validation
+
+The server was compared from a Windows client against several well-known public NTP servers using `ntptool`.
+
+Tested references included:
+
+- `time.google.com`
+- `time.cloudflare.com`
+- `pool.ntp.org`
+- `zedart-time.local`
+
+Example result:
+
+![Comparison of zedart-time.local with public NTP servers](docs/ntptool-comparison.png)
+
+In this test, `zedart-time.local` produced timing results consistent with the public NTP servers used for comparison.
+
+The measured offset was in the same range as the mainstream reference servers, while the local network delay remained only a few milliseconds.
+
+This is not intended as a laboratory-grade accuracy certification, since the measured values also depend on the client and network conditions. It does, however, provide a practical validation that the ZeDART GNSS NTP Server behaves consistently with established public NTP services.
+
+---
+
 ## Intended use
 
 This device was developed as a local time source for the **ZeDART** project, in particular for systems handling ASTERIX traffic data where a reliable UTC reference is useful while keeping the traffic-processing machine independent from Internet-based time services.
