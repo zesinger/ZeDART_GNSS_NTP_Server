@@ -299,8 +299,17 @@ Purple → Green
 | Blue | AP active, waiting for a client | Connecting to Wi-Fi |
 | Green | At least one client connected | Connected to the router |
 | Red | Network unavailable | Connection failed / disconnected |
+| White / pale violet flash | NTP response sent | NTP response sent |
 
 Blue is deliberately used for the waiting state because it is visually easier to distinguish from green than yellow/orange on many RGB LEDs.
+
+Whenever the server successfully sends an NTP response, the NETWORK LED briefly switches to white for approximately **200 ms**, then returns to its normal network-state color. Depending on the RGB LED characteristics and resistor balance, this activity flash may appear slightly violet rather than pure white. The important point is that it remains clearly distinguishable from the normal green connected state.
+
+The flash duration can be adjusted in the firmware:
+
+```cpp
+constexpr uint32_t NTP_ACTIVITY_FLASH_MS = 200;
+```
 
 ---
 
@@ -469,6 +478,8 @@ When an NTP client queries the server, the serial monitor displays for example:
 NTP -> 192.168.0.37
 ```
 
+At the same time, the NETWORK RGB LED briefly flashes white / pale violet for approximately **200 ms** to provide a visible indication that an NTP response has been sent.
+
 ---
 
 ## Time-source validation
@@ -533,7 +544,7 @@ The GNSS receiver is the only time source used by the firmware. Router mode is o
 2. Connect a client to `ZeDART-Time`.
 3. Query NTP server `192.168.4.1`.
 
-The NETWORK LED should change from blue to green when a client connects.
+The NETWORK LED should change from blue to green when a client connects. Each successful NTP response should then produce a brief white / pale violet activity flash before the LED returns to green.
 
 ### Router mode
 
@@ -549,7 +560,7 @@ zedart-time.local
 
 The NETWORK LED should be blue while connecting and green once the Wi-Fi connection is established.
 
-A successful request should produce an `NTP -> ...` line in the Serial Monitor.
+A successful request should produce an `NTP -> ...` line in the Serial Monitor and a brief white / pale violet activity flash on the NETWORK LED.
 
 ---
 
@@ -575,6 +586,7 @@ Current prototype features:
 - [x] NETWORK RGB status LED
 - [x] Common-anode / common-cathode RGB support
 - [x] PWM RGB brightness and color tuning
+- [x] NETWORK LED activity flash on each successful NTP response
 
 ---
 
