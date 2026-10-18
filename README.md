@@ -603,7 +603,7 @@ Tested references included:
 
 Example result:
 
-![Comparison of zedart-time.local with public NTP servers](docs/ntptool-comparison.png)
+![Comparison of zedart-time.local with public NTP servers](doc/ntptool-comparison.png)
 
 In this test, `zedart-time.local` produced timing results consistent with the public NTP servers used for comparison.
 
